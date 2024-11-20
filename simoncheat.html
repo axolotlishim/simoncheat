@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simon Color Detector</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    #color {
+      font-size: 2em;
+      margin-top: 20px;
+      color: darkblue;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Simon Color Detector</h1>
+  <button id="startButton">Start Listening</button>
+  <p>Detected Frequency: <span id="frequency">0</span> Hz</p>
+  <p>Detected Color: <span id="color">None</span></p>
+
+
+  <script>
+    const startButton = document.getElementById('startButton');
+    const frequencyDisplay = document.getElementById('frequency');
+    const colorDisplay = document.getElementById('color');
+
+
+    // Function to map frequencies to colors
+    function mapColor(frequency) {
+      if (frequency >= 380 && frequency <= 420) return 'Red';
+      if (frequency >= 580 && frequency <= 620) return 'Green';
+      if (frequency >= 780 && frequency <= 820) return 'Blue';
+      if (frequency >= 980 && frequency <= 1020) return 'Yellow';
+      return 'Unknown';
+    }
+
+
+    async function startListening() {
+      try {
+        // Request microphone access
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const analyser = audioContext.createAnalyser();
+        const microphone = audioContext.createMediaStreamSource(stream);
+        const dataArray = new Float32Array(analyser.fftSize);
+
+
+        microphone.connect(analyser);
+        analyser.fftSize = 2048; // Set FFT size for frequency analysis
+
+
+        function analyzeAudio() {
+          analyser.getFloatFrequencyData(dataArray);
+
+
+          // Find the frequency with the highest amplitude
+          let maxAmplitude = -Infinity;
+          let maxFrequencyIndex = -1;
+
+
+          for (let i = 0; i < dataArray.length; i++) {
+            if (dataArray[i] > maxAmplitude) {
+              maxAmplitude = dataArray[i];
+              maxFrequencyIndex = i;
+            }
+          }
+
+
+          // Calculate frequency
+          const nyquist = audioContext.sampleRate / 2;
+          const frequency = (maxFrequencyIndex / dataArray.length) * nyquist;
+
+
+          // Update UI with detected frequency and color
+          frequencyDisplay.textContent = frequency.toFixed(2);
+          const detectedColor = mapColor(frequency);
+          colorDisplay.textContent = detectedColor;
+          colorDisplay.style.color = detectedColor.toLowerCase();
+
+
+          // Repeat analysis
+          requestAnimationFrame(analyzeAudio);
+        }
+
+
+        analyzeAudio();
+      } catch (err) {
+        console.error('Error accessing microphone:', err);
+        alert('Microphone access is required for this app to work.');
+      }
+    }
+
+
+    startButton.addEventListener('click', startListening);
+  </script>
+</body>
+</html>
